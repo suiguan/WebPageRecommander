@@ -24,12 +24,14 @@ class FreqWebPageSetFinder:
       self.fs[0] = level0
 
       #3, continue the to next level for each row of the VI-list
+      offset = 0
       for cidx in self.vi_list0.keys():
-         self.find_next_level([cidx,], self.vi_list0[cidx])
+         offset += 1
+         self.find_next_level([cidx,], self.vi_list0[cidx], self.vi_list0, offset)
 
       return self.fs
 
-   def find_next_level(self, col_indices, row_indices): 
+   def find_next_level(self, col_indices, row_indices, prev_level_vi_list, prev_vi_list_offset): 
       level = len(col_indices)
 
       #1, create the projected WB-table
@@ -65,8 +67,14 @@ class FreqWebPageSetFinder:
                break
 
       #, and continue the to next level for each row of the VI-list
+      offset = 0
       for cc in vi_list.keys():
-         self.find_next_level(col_indices+[cc,], vi_list[cc])
+         offset += 1
+         self.find_next_level(col_indices+[cc,], vi_list[cc], vi_list, offset)
+         for kkk in prev_level_vi_list.keys()[prev_vi_list_offset:]:
+            if kkk == cc: #backtrack and update the previous level vi-list if col index is same
+               rows = prev_level_vi_list[kkk] + vi_list[cc]
+               prev_level_vi_list[kkk] = list(set(rows)) #remove duplicate row indices
 
 
    def get_total_pages(self, weblog):
