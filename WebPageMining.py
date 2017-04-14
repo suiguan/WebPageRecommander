@@ -17,17 +17,18 @@ class FreqWebPageSetFinder:
    #return a dict of list of frequent itemsets at each level
    def find_freq_sets(self):
       self.fs = {}
-      level0 = []
+      level0 = set([])
       #find frequent singleton from hi-counter
       for i in range(0, self.hi_counter0.shape[0]):
-         if self.hi_counter0[i] >= self.minsup: level0.append([i,])
+         if self.hi_counter0[i] >= self.minsup: level0.add(frozenset([i,]))
       self.fs[0] = level0
 
       #3, continue the to next level for each row of the VI-list
       offset = 0
       for cidx in self.vi_list0.keys():
          offset += 1
-         self.find_next_level([cidx,], self.vi_list0[cidx], self.vi_list0, offset)
+	 print("%d === %s" % (offset, self.vi_list0))
+         self.find_next_level([cidx,], list(self.vi_list0[cidx]), self.vi_list0, offset)
 
       return self.fs
 
@@ -41,15 +42,17 @@ class FreqWebPageSetFinder:
       hi_counter = np.sum(wb, axis=0) 
       #set non-relevant colum to 0
       for col in col_indices: hi_counter[col] = 0
+      print("%d hicounter" % level)
+      print(hi_counter)
 
       #find frequent non-singleton from hi-counter
       has_next_level = False
       for c in range(0, hi_counter.shape[0]):
          if hi_counter[c] >= self.minsup:
             has_next_level = True
-            s = col_indices + [c,]
-            if level in self.fs.keys(): self.fs[level].append(s)
-            else: self.fs[level] = [s, ]
+            s = frozenset(col_indices + [c,])
+            if level in self.fs.keys(): self.fs[level].add(s)
+            else: self.fs[level] = set([s,])
 
       #if all values in the hi_counter is non-frequent, we don't continue the next level (Apriori)
       if not has_next_level: return
@@ -62,19 +65,21 @@ class FreqWebPageSetFinder:
          for c in columns:
             if wb[i][c] == 1:
                r = row_indices[i]
-               if c in vi_list.keys(): vi_list[c].append(r)
-               else: vi_list[c] = [r,]
+               if c in vi_list.keys(): vi_list[c].add(r)
+               else: vi_list[c] = set([r,])
                break
 
       #, and continue the to next level for each row of the VI-list
       offset = 0
       for cc in vi_list.keys():
          offset += 1
-         self.find_next_level(col_indices+[cc,], vi_list[cc], vi_list, offset)
+         self.find_next_level(col_indices+[cc,], list(vi_list[cc]), vi_list, offset)
+
+	 #backtrack and update the previous level vi-list if col index is same
          for kkk in prev_level_vi_list.keys()[prev_vi_list_offset:]:
-            if kkk == cc: #backtrack and update the previous level vi-list if col index is same
-               rows = prev_level_vi_list[kkk] + vi_list[cc]
-               prev_level_vi_list[kkk] = list(set(rows)) #remove duplicate row indices
+            if kkk == cc:
+               rows = prev_level_vi_list[kkk].union(vi_list[cc])
+	       prev_level_vi_list[kkk] = rows
 
 
    def get_total_pages(self, weblog):
@@ -103,8 +108,8 @@ class FreqWebPageSetFinder:
             if first_occurrence_col == None: first_occurrence_col = w
             elif w < first_occurrence_col: first_occurrence_col = w
 	    wb_table[user][w] = 1
-         if first_occurrence_col in vi_list: vi_list[first_occurrence_col].append(user)
-         else: vi_list[first_occurrence_col] = [user,]
+         if first_occurrence_col in vi_list: vi_list[first_occurrence_col].add(user)
+         else: vi_list[first_occurrence_col] = set([user,])
 	 user += 1
       f.close()
       return wb_table, vi_list, np.sum(wb_table, axis=0) 
@@ -123,7 +128,7 @@ def main(argv):
    all_sets = finder.find_freq_sets()
    for level in all_sets.keys():
       s = all_sets[level]
-      print("level %d has %d freqent sets: %s" % (level, len(s), s))
+      print("level %d has %d freqent sets: %s" % (level, len(s), list(s)))
 
 if __name__ == "__main__":
    main(sys.argv)
