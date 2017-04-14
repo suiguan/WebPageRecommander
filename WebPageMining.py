@@ -10,7 +10,7 @@ class FreqWebPageSetFinder:
       self.minsup = int(MINSUP * self.num_users)
       print("total web pages = %d, total users = %d, minsup = %d" % (self.total_web_pages, self.num_users, self.minsup))
       self.wb_table, self.vi_list0, self.hi_counter0 = self.get_web_table(weblog) #second db scan to set up Level-0 VI-List, HI-Counter 
-      print(self.wb_table)
+      #print(self.wb_table)
       #print(self.vi_list0)
       #print(self.hi_counter0)
 
@@ -34,14 +34,11 @@ class FreqWebPageSetFinder:
 
       #1, create the projected WB-table
       wb = self.wb_table[row_indices]
-      print("at level %d , col index %s" % (level, col_indices))
-      print(wb)
 
       #2, create HI-counter
       hi_counter = np.sum(wb, axis=0) 
       #set non-relevant colum to 0
       for col in col_indices: hi_counter[col] = 0
-      print(hi_counter)
 
       #find frequent non-singleton from hi-counter
       has_next_level = False
