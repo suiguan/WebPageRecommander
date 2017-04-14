@@ -24,11 +24,17 @@ class FreqWebPageSetFinder:
       self.fs[0] = level0
 
       #3, continue the to next level for each row of the VI-list
-      offset = 0
-      for cidx in self.vi_list0.keys():
-         offset += 1
-	 print("%d === %s" % (offset, self.vi_list0))
-         self.find_next_level([cidx,], list(self.vi_list0[cidx]), self.vi_list0, offset)
+      checked_col_indices = set([])
+      while True:
+         all_col_ind_set = set(self.vi_list0.keys())
+         sec = checked_col_indices.intersection(all_col_ind_set) 
+         if len(sec) == len(all_col_ind_set): break #we have checked all keys
+
+         offset = 0
+         for cidx in list(all_col_ind_set.difference(checked_col_indices)):
+            offset += 1
+            self.find_next_level([cidx,], list(self.vi_list0[cidx]), self.vi_list0, offset)
+            checked_col_indices.add(cidx)
 
       return self.fs
 
@@ -42,8 +48,6 @@ class FreqWebPageSetFinder:
       hi_counter = np.sum(wb, axis=0) 
       #set non-relevant colum to 0
       for col in col_indices: hi_counter[col] = 0
-      print("%d hicounter" % level)
-      print(hi_counter)
 
       #find frequent non-singleton from hi-counter
       has_next_level = False
@@ -70,16 +74,29 @@ class FreqWebPageSetFinder:
                break
 
       #, and continue the to next level for each row of the VI-list
-      offset = 0
-      for cc in vi_list.keys():
-         offset += 1
-         self.find_next_level(col_indices+[cc,], list(vi_list[cc]), vi_list, offset)
+      checked_col_indices = set([])
+      while True:
+         all_col_ind_set = set(vi_list.keys())
+         sec = checked_col_indices.intersection(all_col_ind_set) 
+         if len(sec) == len(all_col_ind_set): break #we have checked all keys
 
-	 #backtrack and update the previous level vi-list if col index is same
-         for kkk in prev_level_vi_list.keys()[prev_vi_list_offset:]:
-            if kkk == cc:
-               rows = prev_level_vi_list[kkk].union(vi_list[cc])
-	       prev_level_vi_list[kkk] = rows
+         offset = 0
+         for cc in list(all_col_ind_set.difference(checked_col_indices)):
+            offset += 1
+            self.find_next_level(col_indices+[cc,], list(vi_list[cc]), vi_list, offset)
+            checked_col_indices.add(cc)
+
+            #backtrack and update the previous level vi-list if col index is same
+            updated = False
+            for kkk in prev_level_vi_list.keys()[prev_vi_list_offset:]:
+               if kkk == cc:
+                  rows = prev_level_vi_list[kkk].union(vi_list[cc])
+                  prev_level_vi_list[kkk] = rows
+                  updated = True
+                  break
+
+            #if col index not found in the previous vi-list, add it 
+            if not updated: prev_level_vi_list[cc] = vi_list[cc]
 
 
    def get_total_pages(self, weblog):
