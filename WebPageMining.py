@@ -134,18 +134,30 @@ class FreqWebPageSetFinder:
 
 
 def usage(prog):
-   print("Usage: python %s <weblog file>" % prog)
+   print("Usage: python %s <weblog file> <output file name>" % prog)
    print("       where in <weblog file>, each line is a user's web access log,")
    print("       the web pages are separted by comma, and identified by 0 to N-1, where N = total number of web pages")
    sys.exit(-1);
 
 def main(argv):
-   if len(argv) != 2: usage(argv[0])
+   if len(argv) != 3: usage(argv[0])
+   outf = open(argv[2], "w")
+
+   before = int(time.time())
    finder = FreqWebPageSetFinder(argv[1])
    all_sets = finder.find_freq_sets()
+   after = int(time.time())
+   print("Take %d seconds to find all frequent item sets" % (after - before))
+   outf.write("Take %d seconds to find all frequent item sets\n" % (after - before))
+
    for level in all_sets.keys():
-      s = all_sets[level]
-      print("level %d has %d freqent sets: %s" % (level, len(s), list(s)))
+      ss = all_sets[level]
+      line = "Level %d has %d frequent sets: " % (level, len(ss))
+      for s in ss:
+         line += "%s," % list(s)
+      line += "\n"
+      outf.write(line)
+   outf.close()
 
 if __name__ == "__main__":
    main(sys.argv)
