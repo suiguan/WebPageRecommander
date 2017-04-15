@@ -2,7 +2,7 @@ import numpy as np
 import sys
 import time
 
-MINSUP = (1.0/3)
+MINSUP = (1.0/10)
 
 class FreqWebPageSetFinder:
    def __init__(self, weblog):
