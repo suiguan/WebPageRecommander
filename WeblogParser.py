@@ -47,14 +47,23 @@ class Weblog_Parser:
             resp_code = int(tokens[-2])
             web_req = line.split('"')[1]
             web_req_tokens = web_req.split()
-            if len(web_req_tokens) < 2: continue #ignore request that does have HTTP request method
+
+            if len(web_req_tokens) < 2: continue #ignore request that doesn't have valid HTTP request method
             webpage = web_req.split()[1]
             if (resp_code >= 200 and resp_code <= 299): #only record valid http response code
                self.add_user_access(user, webpage)
+
+	    #TODO: also consider if URL belongs to the same webpage previously seen)
+
          except Exception, e:
             print("ignore invalid formatted line: %s" % line)
-            print(e)
+            #print(e)
             continue
+
+      #the first line of the formatted web log contain two number seperated by comma,
+      #the first is total number of webpages in the domain
+      #the second is the total number of users
+      self.formated_weblog.write("%d,%d\n" % (len(self.web_id_table.keys()), len(self.user_access_log_table.keys())))
 
       #save outputs
       self.dump_forrmated_log()
@@ -68,7 +77,7 @@ class Weblog_Parser:
 def usage(prog):
    print("Usage: python %s <weblog file> <formatted web log output filename> <web id lookup filename>" % prog)
    print("       where in <weblog>, each line has the format: host - timestamp - request -HTTP reply code - bytes in the reply")
-   print("             in <formatted web log>, each line indicates the web has been access by the user (user id hidden)")
+   print("             in <formatted web log>, first line is <number of web pages>,<number of users>, then following each line indicates the web has been access by the user (user id hidden)")
    print("             in <web id lookup file>, we can find out which id means which web page")
    sys.exit(-1);
 
