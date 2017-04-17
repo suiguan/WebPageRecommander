@@ -53,7 +53,7 @@ class Weblog_Parser:
             if (resp_code >= 200 and resp_code <= 299): #only record valid http response code
                self.add_user_access(user, webpage)
 
-	    #TODO: also consider if URL belongs to the same webpage previously seen)
+            #TODO: also consider if URL belongs to the same webpage previously seen)
 
          except Exception, e:
             print("ignore invalid formatted line: %s" % line)
