@@ -2,20 +2,21 @@ import numpy as np
 import sys
 import time
 
-MINSUP = (1.0/10)
+MINSUP = (1.0/3)
+#MINSUP = (1.0/10)
 
 class FreqWebPageSetFinder:
    def __init__(self, weblog):
-      self.total_web_pages, self.num_users = self.get_total_pages(weblog) #first db scan get total number of webpages
+      self.total_web_pages, self.num_users, self.wb_table, self.vi_list0, self.hi_counter0 = self.get_web_table(weblog) #db scan to set up Level-0 VI-List, HI-Counter 
       self.minsup = int(MINSUP * self.num_users)
       print("total web pages = %d, total users = %d, minsup = %d" % (self.total_web_pages, self.num_users, self.minsup))
-      self.wb_table, self.vi_list0, self.hi_counter0 = self.get_web_table(weblog) #second db scan to set up Level-0 VI-List, HI-Counter 
       #print(self.wb_table)
       #print(self.vi_list0)
       #print(self.hi_counter0)
 
+   #implementation of the paper "Web Page Recommdation Based on Bitwise Frequent Pattern Mining"
    #return a dict of list of frequent itemsets at each level
-   def find_freq_sets(self):
+   def BW_mine(self):
       self.fs = {}
       level0 = set([])
       #find frequent singleton from hi-counter
@@ -99,43 +100,45 @@ class FreqWebPageSetFinder:
             if not updated: prev_level_vi_list[cc] = vi_list[cc]
 
 
-   def get_total_pages(self, weblog):
-      f = open(weblog)
-      table = {}
-      num_users = 0
-      for line in f:
-         num_users += 1
-         webpages = line.split(',')
-         for webpage in webpages:
-            w = int(webpage)
-            if not w in table.keys(): table[w] = 1
-      f.close()
-      return len(table.keys()), num_users
-
    def get_web_table(self, weblog):
-      wb_table = np.zeros((self.num_users, self.total_web_pages), dtype=np.uint8) 
-      vi_list = {}
       f = open(weblog)
+      firstline = f.readline()
+      tokens = firstline.split(',')
+      total_web_pages = int(tokens[0])
+      total_users = int(tokens[1]) 
+
+      wb_table = np.zeros((total_users, total_web_pages), dtype=np.uint8) 
+      vi_list = {}
       user = 0
       for line in f:
+	 #error checking:
+	 if user >= total_users: raise Exception("Too many user access log, number of lines >= total user count %d" % total_users) 
+
          webpages = line.split(',')
          first_occurrence_col = None
          for webpage in webpages:
             w = int(webpage)
+
+	    #error checking:
+	    if w < 0 or w >= total_web_pages: raise Exception("Invalid web page number %d, total web page count %d" % (w, total_web_pages))
+
             if first_occurrence_col == None: first_occurrence_col = w
             elif w < first_occurrence_col: first_occurrence_col = w
 	    wb_table[user][w] = 1
+
          if first_occurrence_col in vi_list: vi_list[first_occurrence_col].add(user)
          else: vi_list[first_occurrence_col] = set([user,])
 	 user += 1
+
       f.close()
-      return wb_table, vi_list, np.sum(wb_table, axis=0) 
+      return total_web_pages, total_users, wb_table, vi_list, np.sum(wb_table, axis=0) 
 
 
 
 def usage(prog):
    print("Usage: python %s <weblog file> <output file name>" % prog)
-   print("       where in <weblog file>, each line is a user's web access log,")
+   print("       where in <weblog file>, the first line is comma seperated two number, the first number is total number of web pages,")
+   print("                               the second number is total number of users, then following each line is a user's web access log,")
    print("       the web pages are separted by comma, and identified by 0 to N-1, where N = total number of web pages")
    sys.exit(-1);
 
@@ -145,7 +148,7 @@ def main(argv):
 
    before = int(time.time())
    finder = FreqWebPageSetFinder(argv[1])
-   all_sets = finder.find_freq_sets()
+   all_sets = finder.BW_mine()
    after = int(time.time())
    print("Take %d seconds to find all frequent item sets" % (after - before))
    outf.write("Take %d seconds to find all frequent item sets\n" % (after - before))
