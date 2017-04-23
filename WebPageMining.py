@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 import time
+import operator
 
 MINSUP = (1.0/3)
 #MINSUP = (1.0/10)
@@ -37,7 +38,56 @@ class FreqWebPageSetFinder:
             self.find_next_level([cidx,], list(self.vi_list0[cidx]), self.vi_list0, offset)
             checked_col_indices.add(cidx)
 
+      #return the FS
       return self.fs
+
+   #implementation of the paper "Frequent Itemsets Mining Using Vertical Index List"
+   #by using the BW_table other than the proposed VIL 
+   #return a dict of list of frequent itemsets at each level
+   def SL_mine(self):
+      self.fs = {}
+      sl_table = {} # ("webpage" : "support") key-value pair
+
+      #find frequent singleton from hi-counter & create SL table
+      level0 = set([])
+      for i in range(0, self.hi_counter0.shape[0]):
+         if self.hi_counter0[i] >= self.minsup: 
+            level0.add(frozenset([i,]))
+            sl_table[i] = self.hi_counter0[i]
+      self.fs[0] = level0
+
+      #sort the SL table based on support value
+      self.sorted_sl = sorted(sl_table.items(), key=operator.itemgetter(1)) #sort by value
+
+      #use the key (webpage) in the sorted_sl as the control order to find all frequent itemsets
+      for idx in range(0, len(self.sorted_sl)): 
+         nextIdx = idx + 1
+         while nextIdx < len(self.sorted_sl):
+            self.check_high_level([self.sorted_sl[idx][0],], nextIdx)
+            nextIdx += 1
+
+      #return the FS
+      return self.fs
+
+   def check_high_level(self, webpages, nextIdx):
+      if nextIdx >= len(self.sorted_sl): return
+      itemset = webpages + [self.sorted_sl[nextIdx][0],]
+      level = len(itemset)
+      #calculate the support of the itemset from the BW_table  
+      #there should be at lease 2 webpages in the itemset
+      r = self.wb_table[:,itemset[0]] & self.wb_table[:,itemset[1]] #access by column 
+      for webp in itemset[2:]: 
+         r = r & self.wb_table[:,webp] #access by column
+      sup = np.sum(r)
+      if sup >= self.minsup:
+         #add the itemset to the FS
+         s = frozenset(itemset)
+         if level in self.fs.keys(): self.fs[level].add(s)
+         else: self.fs[level] = set([s,])
+         #continue to check higher level
+         for idx in range(nextIdx+1, len(self.sorted_sl)):
+            self.check_high_level(itemset, idx)
+
 
    def find_next_level(self, col_indices, row_indices, prev_level_vi_list, prev_vi_list_offset): 
       level = len(col_indices)
@@ -149,6 +199,7 @@ def main(argv):
    before = int(time.time())
    finder = FreqWebPageSetFinder(argv[1])
    all_sets = finder.BW_mine()
+   #all_sets = finder.SL_mine()
    after = int(time.time())
    print("Take %d seconds to find all frequent item sets" % (after - before))
    outf.write("Take %d seconds to find all frequent item sets\n" % (after - before))
