@@ -32,7 +32,6 @@ class FreqWebPageSetFinder:
 	  row_indices = []
 	  for r in range(0, col_arr.shape[0]):
              if col_arr[r] == 1: row_indices.append(r)
-
           #find next level for this vi_list entry
           self.find_next_level([col_idx,], row_indices, col_idx + 1)
 
@@ -71,6 +70,7 @@ class FreqWebPageSetFinder:
          rows = []
          for r in row_indices:
             if col_arr[r] == 1: rows.append(r)
+         #find next level for this vi_list entry
          self.find_next_level(col_indices + [col_idx,], rows, col_idx + 1)
 
 
