@@ -16,6 +16,6 @@ try:
       counts += 1
       sumUsage += usage
       avgUsage = sumUsage/counts
-      time.sleep(0.01)
+      time.sleep(0.001)
 finally:
    print("baseUsage %.3f%% min %.3f%% max %.3f%% avg %.3f%%" % (baseUsage, minUsage, maxUsage, avgUsage))

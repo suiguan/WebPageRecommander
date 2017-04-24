@@ -1,4 +1,6 @@
 import numpy as np
+import os
+import psutil
 import sys
 import time
 import operator
@@ -157,7 +159,7 @@ def usage(prog):
 def main(argv):
    if len(argv) != 4: usage(argv[0])
    outf = open(argv[3], "w")
-
+   process = psutil.Process(os.getpid())
    before = int(time.time())
    all_sets = None
    if argv[1] == "BW":
@@ -170,8 +172,9 @@ def main(argv):
       print("Unsupported Mining method %s, only BW/SL is current supported" % argv[1])
       sys.exit(-1);
    after = int(time.time())
-   print("Take %d seconds to find all frequent item sets" % (after - before))
-   outf.write("Take %d seconds to find all frequent item sets\n" % (after - before))
+   mem_usage_mb = process.memory_info().rss / 1000000
+   print("Take %d seconds to find all frequent item sets, memory usage %d MB" % (after - before, mem_usage_mb))
+   outf.write("Take %d seconds to find all frequent item sets, memory usage %d MB\n" % (after - before, mem_usage_mb))
 
    for level in all_sets.keys():
       ss = all_sets[level]
