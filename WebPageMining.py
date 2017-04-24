@@ -72,7 +72,7 @@ class FreqWebPageSetFinder:
    def check_high_level(self, webpages, nextIdx):
       if nextIdx >= len(self.sorted_sl): return
       itemset = webpages + [self.sorted_sl[nextIdx][0],]
-      level = len(itemset)
+      level = len(itemset) - 1
       #calculate the support of the itemset from the BW_table  
       #there should be at lease 2 webpages in the itemset
       r = self.wb_table[:,itemset[0]] & self.wb_table[:,itemset[1]] #access by column 
