@@ -91,11 +91,9 @@ class FreqWebPageSetFinder:
       level = len(col_indices)
       #print("at level %d, col_indices = %s" % (level, col_indices))
 
-      #1, create the projected WB-table
-      wb = self.wb_table[row_indices]
-
-      #2, create HI-counter
-      hi_counter = np.sum(wb, axis=0) 
+      #create HI-counter from the projected WB-table
+      hi_counter = np.zeros(self.wb_table.shape[1], dtype=np.uint32)
+      for r in row_indices: hi_counter += self.wb_table[r] 
       #print("finding at level %d, col indices %s, row indices %s, next col idx %d" % (level, col_indices, row_indices, next_col_idx))
       #print(hi_counter)
 
@@ -113,7 +111,7 @@ class FreqWebPageSetFinder:
          #print("no next level")
          return
 
-      #3, create VI-list entry for this level,
+      #create VI-list entry for this level,
       for col_idx in range(next_col_idx, self.total_web_pages):
          if hi_counter[col_idx] < self.minsup: continue
          col_arr = self.wb_table[:,col_idx]
