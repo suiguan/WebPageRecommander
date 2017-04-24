@@ -39,6 +39,41 @@ class FreqWebPageSetFinder:
       #return the FS
       return self.fs
 
+
+   def find_next_level(self, col_indices, row_indices, next_col_idx): 
+      level = len(col_indices)
+      #print("at level %d, col_indices = %s" % (level, col_indices))
+
+      #create HI-counter from the projected WB-table
+      hi_counter = np.zeros(self.wb_table.shape[1], dtype=np.uint32)
+      for r in row_indices: hi_counter += self.wb_table[r] 
+      #print("finding at level %d, col indices %s, row indices %s, next col idx %d" % (level, col_indices, row_indices, next_col_idx))
+      #print(hi_counter)
+
+      #find frequent non-singleton from hi-counter
+      has_next_level = False
+      for c in range(next_col_idx, hi_counter.shape[0]):
+         if hi_counter[c] >= self.minsup:
+            has_next_level = True
+            s = frozenset(col_indices + [c,])
+            if level in self.fs.keys(): self.fs[level].add(s)
+            else: self.fs[level] = set([s,])
+
+      #if all values in the hi_counter is non-frequent, we don't continue the next level (Apriori)
+      if not has_next_level: 
+         #print("no next level")
+         return
+
+      #create VI-list entry for this level,
+      for col_idx in range(next_col_idx, self.total_web_pages):
+         if hi_counter[col_idx] < self.minsup: continue
+         col_arr = self.wb_table[:,col_idx]
+         rows = []
+         for r in row_indices:
+            if col_arr[r] == 1: rows.append(r)
+         self.find_next_level(col_indices + [col_idx,], rows, col_idx + 1)
+
+
    #implementation of the paper "Frequent Itemsets Mining Using Vertical Index List"
    #by using the BW_table other than the proposed VIL 
    #return a dict of list of frequent itemsets at each level
@@ -85,40 +120,6 @@ class FreqWebPageSetFinder:
          #continue to check higher level
          for idx in range(nextIdx+1, len(self.sorted_sl)):
             self.check_high_level(itemset, idx)
-
-
-   def find_next_level(self, col_indices, row_indices, next_col_idx): 
-      level = len(col_indices)
-      #print("at level %d, col_indices = %s" % (level, col_indices))
-
-      #create HI-counter from the projected WB-table
-      hi_counter = np.zeros(self.wb_table.shape[1], dtype=np.uint32)
-      for r in row_indices: hi_counter += self.wb_table[r] 
-      #print("finding at level %d, col indices %s, row indices %s, next col idx %d" % (level, col_indices, row_indices, next_col_idx))
-      #print(hi_counter)
-
-      #find frequent non-singleton from hi-counter
-      has_next_level = False
-      for c in range(next_col_idx, hi_counter.shape[0]):
-         if hi_counter[c] >= self.minsup:
-            has_next_level = True
-            s = frozenset(col_indices + [c,])
-            if level in self.fs.keys(): self.fs[level].add(s)
-            else: self.fs[level] = set([s,])
-
-      #if all values in the hi_counter is non-frequent, we don't continue the next level (Apriori)
-      if not has_next_level: 
-         #print("no next level")
-         return
-
-      #create VI-list entry for this level,
-      for col_idx in range(next_col_idx, self.total_web_pages):
-         if hi_counter[col_idx] < self.minsup: continue
-         col_arr = self.wb_table[:,col_idx]
-         rows = []
-         for r in row_indices:
-            if col_arr[r] == 1: rows.append(r)
-         self.find_next_level(col_indices + [col_idx,], rows, col_idx + 1)
 
 
    def get_web_table(self, weblog):
