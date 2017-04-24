@@ -8,11 +8,10 @@ MINSUP = (1.0/3)
 
 class FreqWebPageSetFinder:
    def __init__(self, weblog):
-      self.total_web_pages, self.num_users, self.wb_table, self.vi_list0, self.hi_counter0 = self.get_web_table(weblog) #db scan to set up Level-0 VI-List, HI-Counter 
+      self.total_web_pages, self.num_users, self.wb_table, self.hi_counter0 = self.get_web_table(weblog) #db scan to set up Level-0 VI-List, HI-Counter 
       self.minsup = int(MINSUP * self.num_users)
       print("total web pages = %d, total users = %d, minsup = %d" % (self.total_web_pages, self.num_users, self.minsup))
       #print(self.wb_table)
-      #print(self.vi_list0)
       #print(self.hi_counter0)
 
    #implementation of the paper "Web Page Recommdation Based on Bitwise Frequent Pattern Mining"
@@ -26,17 +25,16 @@ class FreqWebPageSetFinder:
       self.fs[0] = level0
 
       #3, continue the to next level for each row of the VI-list
-      checked_col_indices = set([])
-      while True:
-         all_col_ind_set = set(self.vi_list0.keys())
-         sec = checked_col_indices.intersection(all_col_ind_set) 
-         if len(sec) == len(all_col_ind_set): break #we have checked all keys
+      for col_idx in range(0, self.total_web_pages):
+	  #create vi_list entry for col_idx
+          if self.hi_counter0[col_idx] < self.minsup: continue
+	  col_arr = self.wb_table[:,col_idx]
+	  row_indices = []
+	  for r in range(0, col_arr.shape[0]):
+             if col_arr[r] == 1: row_indices.append(r)
 
-         offset = 0
-         for cidx in list(all_col_ind_set.difference(checked_col_indices)):
-            offset += 1
-            self.find_next_level([cidx,], list(self.vi_list0[cidx]), self.vi_list0, offset)
-            checked_col_indices.add(cidx)
+          #find next level for this vi_list entry
+          self.find_next_level([col_idx,], row_indices, col_idx + 1)
 
       #return the FS
       return self.fs
@@ -89,20 +87,21 @@ class FreqWebPageSetFinder:
             self.check_high_level(itemset, idx)
 
 
-   def find_next_level(self, col_indices, row_indices, prev_level_vi_list, prev_vi_list_offset): 
+   def find_next_level(self, col_indices, row_indices, next_col_idx): 
       level = len(col_indices)
+      #print("at level %d, col_indices = %s" % (level, col_indices))
 
       #1, create the projected WB-table
       wb = self.wb_table[row_indices]
 
       #2, create HI-counter
       hi_counter = np.sum(wb, axis=0) 
-      #set non-relevant colum to 0
-      for col in col_indices: hi_counter[col] = 0
+      #print("finding at level %d, col indices %s, row indices %s, next col idx %d" % (level, col_indices, row_indices, next_col_idx))
+      #print(hi_counter)
 
       #find frequent non-singleton from hi-counter
       has_next_level = False
-      for c in range(0, hi_counter.shape[0]):
+      for c in range(next_col_idx, hi_counter.shape[0]):
          if hi_counter[c] >= self.minsup:
             has_next_level = True
             s = frozenset(col_indices + [c,])
@@ -110,44 +109,18 @@ class FreqWebPageSetFinder:
             else: self.fs[level] = set([s,])
 
       #if all values in the hi_counter is non-frequent, we don't continue the next level (Apriori)
-      if not has_next_level: return
+      if not has_next_level: 
+         #print("no next level")
+         return
 
-      #3, create VI-list for this level,
-      vi_list = {} 
-      columns = range(0, self.total_web_pages)
-      for c in col_indices: columns.remove(c)
-      for i in range(0, wb.shape[0]):
-         for c in columns:
-            if wb[i][c] == 1:
-               r = row_indices[i]
-               if c in vi_list.keys(): vi_list[c].add(r)
-               else: vi_list[c] = set([r,])
-               break
-
-      #, and continue the to next level for each row of the VI-list
-      checked_col_indices = set([])
-      while True:
-         all_col_ind_set = set(vi_list.keys())
-         sec = checked_col_indices.intersection(all_col_ind_set) 
-         if len(sec) == len(all_col_ind_set): break #we have checked all keys
-
-         offset = 0
-         for cc in list(all_col_ind_set.difference(checked_col_indices)):
-            offset += 1
-            self.find_next_level(col_indices+[cc,], list(vi_list[cc]), vi_list, offset)
-            checked_col_indices.add(cc)
-
-            #backtrack and update the previous level vi-list if col index is same
-            updated = False
-            for kkk in prev_level_vi_list.keys()[prev_vi_list_offset:]:
-               if kkk == cc:
-                  rows = prev_level_vi_list[kkk].union(vi_list[cc])
-                  prev_level_vi_list[kkk] = rows
-                  updated = True
-                  break
-
-            #if col index not found in the previous vi-list, add it 
-            if not updated: prev_level_vi_list[cc] = vi_list[cc]
+      #3, create VI-list entry for this level,
+      for col_idx in range(next_col_idx, self.total_web_pages):
+         if hi_counter[col_idx] < self.minsup: continue
+         col_arr = self.wb_table[:,col_idx]
+         rows = []
+         for r in row_indices:
+            if col_arr[r] == 1: rows.append(r)
+         self.find_next_level(col_indices + [col_idx,], rows, col_idx + 1)
 
 
    def get_web_table(self, weblog):
@@ -156,50 +129,47 @@ class FreqWebPageSetFinder:
       tokens = firstline.split(',')
       total_web_pages = int(tokens[0])
       total_users = int(tokens[1]) 
-
       wb_table = np.zeros((total_users, total_web_pages), dtype=np.uint8) 
-      vi_list = {}
       user = 0
       for line in f:
 	 #error checking:
 	 if user >= total_users: raise Exception("Too many user access log, number of lines >= total user count %d" % total_users) 
-
          webpages = line.split(',')
          first_occurrence_col = None
          for webpage in webpages:
             w = int(webpage)
-
 	    #error checking:
 	    if w < 0 or w >= total_web_pages: raise Exception("Invalid web page number %d, total web page count %d" % (w, total_web_pages))
-
-            if first_occurrence_col == None: first_occurrence_col = w
-            elif w < first_occurrence_col: first_occurrence_col = w
 	    wb_table[user][w] = 1
-
-         if first_occurrence_col in vi_list: vi_list[first_occurrence_col].add(user)
-         else: vi_list[first_occurrence_col] = set([user,])
 	 user += 1
-
       f.close()
-      return total_web_pages, total_users, wb_table, vi_list, np.sum(wb_table, axis=0) 
+      return total_web_pages, total_users, wb_table, np.sum(wb_table, axis=0) 
 
 
 
 def usage(prog):
-   print("Usage: python %s <weblog file> <output file name>" % prog)
+   print("Usage: python %s <BW/SL> <weblog file> <output file name>" % prog)
+   print("       where in <BW/SL>, BW means using BW_mine and SL means using SL_mine")
    print("       where in <weblog file>, the first line is comma seperated two number, the first number is total number of web pages,")
    print("                               the second number is total number of users, then following each line is a user's web access log,")
-   print("       the web pages are separted by comma, and identified by 0 to N-1, where N = total number of web pages")
+   print("                               the web pages are separted by comma, and identified by 0 to N-1, where N = total number of web pages")
    sys.exit(-1);
 
 def main(argv):
-   if len(argv) != 3: usage(argv[0])
-   outf = open(argv[2], "w")
+   if len(argv) != 4: usage(argv[0])
+   outf = open(argv[3], "w")
 
    before = int(time.time())
-   finder = FreqWebPageSetFinder(argv[1])
-   all_sets = finder.BW_mine()
-   #all_sets = finder.SL_mine()
+   all_sets = None
+   if argv[1] == "BW":
+      finder = FreqWebPageSetFinder(argv[2])
+      all_sets = finder.BW_mine()
+   elif argv[1] == "SL":
+      finder = FreqWebPageSetFinder(argv[2])
+      all_sets = finder.SL_mine()
+   if all_sets == None:
+      print("Unsupported Mining method %s, only BW/SL is current supported" % argv[1])
+      sys.exit(-1);
    after = int(time.time())
    print("Take %d seconds to find all frequent item sets" % (after - before))
    outf.write("Take %d seconds to find all frequent item sets\n" % (after - before))
