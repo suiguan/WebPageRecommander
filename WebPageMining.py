@@ -10,7 +10,7 @@ MINSUP = (1.0/3)
 
 class FreqWebPageSetFinder:
    def __init__(self, weblog):
-      self.total_web_pages, self.num_users, self.wb_table, self.hi_counter0 = self.get_web_table(weblog) #db scan to set up Level-0 VI-List, HI-Counter 
+      self.total_web_pages, self.num_users, self.wb_table, self.hi_counter0 = self.get_web_table(weblog) #db scan to set up WB-Table, Level-0 HI-Counter 
       self.minsup = int(MINSUP * self.num_users)
       print("total web pages = %d, total users = %d, minsup = %d" % (self.total_web_pages, self.num_users, self.minsup))
       #print(self.wb_table)
