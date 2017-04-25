@@ -174,7 +174,7 @@ def main(argv):
       print("Unsupported Mining method %s, only BW/SL is current supported" % argv[1])
       sys.exit(-1);
    after = int(time.time())
-   mem_usage_mb = process.memory_info().rss / 1000000
+   mem_usage_mb = process.memory_info().rss / (1024*1024) #in MB
    print("Take %d seconds to find all frequent item sets, memory usage %d MB" % (after - before, mem_usage_mb))
    outf.write("Take %d seconds to find all frequent item sets, memory usage %d MB\n" % (after - before, mem_usage_mb))
 
