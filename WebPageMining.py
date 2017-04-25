@@ -46,17 +46,18 @@ class FreqWebPageSetFinder:
       #print("at level %d, col_indices = %s" % (level, col_indices))
 
       #create HI-counter from the projected WB-table
-      hi_counter = np.zeros(self.wb_table.shape[1], dtype=np.uint32)
-      for r in row_indices: hi_counter += self.wb_table[r] 
+      hi_counter = np.zeros(self.wb_table.shape[1] - next_col_idx, dtype=np.uint32)
+      for r in row_indices: hi_counter += self.wb_table[r][next_col_idx:] #we don't need the columns before "next_col_idx" 
       #print("finding at level %d, col indices %s, row indices %s, next col idx %d" % (level, col_indices, row_indices, next_col_idx))
       #print(hi_counter)
 
       #find frequent non-singleton from hi-counter
       has_next_level = False
-      for c in range(next_col_idx, hi_counter.shape[0]):
+      for c in range(0, hi_counter.shape[0]):
          if hi_counter[c] >= self.minsup:
             has_next_level = True
-            s = frozenset(col_indices + [c,])
+            col_idx = c + next_col_idx #the actual column index is based at "next_col_idx"
+            s = frozenset(col_indices + [col_idx,])
             if level in self.fs.keys(): self.fs[level].add(s)
             else: self.fs[level] = set([s,])
 
@@ -67,7 +68,8 @@ class FreqWebPageSetFinder:
 
       #create VI-list entry for this level,
       for col_idx in range(next_col_idx, self.total_web_pages):
-         if hi_counter[col_idx] < self.minsup: continue
+         #Note, the hi_counter is only has length = "self.total_web_pages - next_col_idx"
+         if hi_counter[col_idx - next_col_idx] < self.minsup: continue
          col_arr = self.wb_table[:,col_idx]
          rows = []
          for r in row_indices:
