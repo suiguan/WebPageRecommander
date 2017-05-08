@@ -4,9 +4,12 @@ import psutil
 import sys
 import time
 import operator
+#from memory_profiler import profile
 
 MINSUP = (1.0/3)
 #MINSUP = (1.0/10)
+
+TOTAL_INTERMEDIATE_TABLE_MEM = 0
 
 class FreqWebPageSetFinder:
    def __init__(self, weblog):
@@ -18,6 +21,7 @@ class FreqWebPageSetFinder:
 
    #implementation of the paper "Web Page Recommdation Based on Bitwise Frequent Pattern Mining"
    #return a dict of list of frequent itemsets at each level
+   #@profile
    def BW_mine(self):
       self.fs = {}
       level0 = set([])
@@ -40,10 +44,14 @@ class FreqWebPageSetFinder:
       #return the FS
       return self.fs
 
-
+   #@profile
    def find_next_level(self, col_indices, row_indices, next_col_idx): 
       level = len(col_indices)
       #print("at level %d, col_indices = %s" % (level, col_indices))
+
+      #track intermediate table memory usage
+      global TOTAL_INTERMEDIATE_TABLE_MEM
+      TOTAL_INTERMEDIATE_TABLE_MEM += (self.wb_table.shape[1] - next_col_idx)
 
       #create HI-counter from the projected WB-table
       hi_counter = np.zeros(self.wb_table.shape[1] - next_col_idx, dtype=np.uint32)
@@ -81,6 +89,7 @@ class FreqWebPageSetFinder:
    #implementation of the paper "Frequent Itemsets Mining Using Vertical Index List"
    #by using the BW_table other than the proposed VIL 
    #return a dict of list of frequent itemsets at each level
+   #@profile
    def SL_mine(self):
       self.fs = {}
       sl_table = {} # ("webpage" : "support") key-value pair
@@ -106,10 +115,16 @@ class FreqWebPageSetFinder:
       #return the FS
       return self.fs
 
+   #@profile
    def check_high_level(self, webpages, nextIdx):
       if nextIdx >= len(self.sorted_sl): return
       itemset = webpages + [self.sorted_sl[nextIdx][0],]
       level = len(itemset) - 1
+
+      #track intermediate table memory usage
+      global TOTAL_INTERMEDIATE_TABLE_MEM
+      TOTAL_INTERMEDIATE_TABLE_MEM += self.num_users
+
       #calculate the support of the itemset from the BW_table  
       #there should be at lease 2 webpages in the itemset
       r = self.wb_table[:,itemset[0]] & self.wb_table[:,itemset[1]] #access by column 
@@ -175,8 +190,8 @@ def main(argv):
       sys.exit(-1);
    after = int(time.time())
    mem_usage_mb = process.memory_info().rss / (1024*1024) #in MB
-   print("Take %d seconds to find all frequent item sets, memory usage %d MB" % (after - before, mem_usage_mb))
-   outf.write("Take %d seconds to find all frequent item sets, memory usage %d MB\n" % (after - before, mem_usage_mb))
+   print("Take %d seconds to find all frequent item sets, memory usage %d MB, total intermediate table memory usage %d\n" % (after - before, mem_usage_mb, TOTAL_INTERMEDIATE_TABLE_MEM))
+   outf.write("Take %d seconds to find all frequent item sets, memory usage %d MB, total intermediate table memory usage %d\n" % (after - before, mem_usage_mb, TOTAL_INTERMEDIATE_TABLE_MEM))
 
    for level in all_sets.keys():
       ss = all_sets[level]
