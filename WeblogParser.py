@@ -1,4 +1,5 @@
 import sys
+import operator
 
 class Weblog_Parser:
    def __init__(self, input_weblog):
@@ -28,8 +29,9 @@ class Weblog_Parser:
          self.formated_weblog.write(line)
 
    def dump_web_id_table(self):
-      for web in self.web_id_table.keys():
-         self.weblog_id_lookup.write("%d --- %s\n" % (self.web_id_table[web], web))
+      sorted_table = sorted(self.web_id_table.items(), key=operator.itemgetter(1))
+      for web, wid in sorted_table:
+         self.weblog_id_lookup.write("%d --- %s\n" % (wid, web))
 
    def parse(self, out_formatted_log, out_id_lookup):
       #open all files
