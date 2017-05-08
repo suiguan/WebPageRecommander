@@ -51,7 +51,7 @@ class FreqWebPageSetFinder:
 
       #track intermediate table memory usage
       global TOTAL_INTERMEDIATE_TABLE_MEM
-      TOTAL_INTERMEDIATE_TABLE_MEM += (self.wb_table.shape[1] - next_col_idx)
+      TOTAL_INTERMEDIATE_TABLE_MEM += ((self.wb_table.shape[1] - next_col_idx) * 32) #each counter is 32-bit 
 
       #create HI-counter from the projected WB-table
       hi_counter = np.zeros(self.wb_table.shape[1] - next_col_idx, dtype=np.uint32)
@@ -123,13 +123,17 @@ class FreqWebPageSetFinder:
 
       #track intermediate table memory usage
       global TOTAL_INTERMEDIATE_TABLE_MEM
-      TOTAL_INTERMEDIATE_TABLE_MEM += self.num_users
+      TOTAL_INTERMEDIATE_TABLE_MEM += (self.num_users * 2) #need 2 such array for *AND* operation
 
       #calculate the support of the itemset from the BW_table  
       #there should be at lease 2 webpages in the itemset
       r = self.wb_table[:,itemset[0]] & self.wb_table[:,itemset[1]] #access by column 
       for webp in itemset[2:]: 
          r = r & self.wb_table[:,webp] #access by column
+
+      #track intermediate memory usage
+      TOTAL_INTERMEDIATE_TABLE_MEM += 32 #use 32-bit counter to sum all 1's
+
       sup = np.sum(r)
       if sup >= self.minsup:
          #add the itemset to the FS
